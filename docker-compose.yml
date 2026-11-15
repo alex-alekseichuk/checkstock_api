@@ -1,13 +1,15 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: checkstock_db
     environment:
       POSTGRES_DB: checkstock
       POSTGRES_USER: checkstock
       POSTGRES_PASSWORD: checkstock
+    ports:
+      - "5432:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -q -U checkstock"]
       interval: 5s

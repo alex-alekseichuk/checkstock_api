@@ -1,0 +1,9 @@
+[project]
+name = "checkstock_api"
+version = "0.1.0"
+description = "CheckStock API service"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn==0.32.1",
+]
