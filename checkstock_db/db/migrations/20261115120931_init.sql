@@ -46,15 +46,15 @@ CREATE TABLE stock.stores (
 );
 
 -- On-hand stock per item per FF store.
--- `stock_id` is the FF store (склад) holding this stock;
+-- `store_id` is the FF store (склад) holding this stock;
 -- `reserved` is stock blocked for orders.
 CREATE TABLE stock.stock (
     item_id uuid NOT NULL REFERENCES stock.items (id),
-    stock_id uuid NOT NULL REFERENCES stock.stores (id),
+    store_id uuid NOT NULL REFERENCES stock.stores (id),
     quantity integer NOT NULL DEFAULT 0,
     reserved integer NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (item_id, stock_id),
+    PRIMARY KEY (item_id, store_id),
     CHECK (quantity >= 0),
     CHECK (reserved >= 0),
     CHECK (quantity >= reserved)

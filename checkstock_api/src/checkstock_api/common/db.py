@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
+from functools import wraps
+from typing import Any
+
 import asyncpg
 
 
@@ -61,3 +66,53 @@ class Database:
 
     async def __aexit__(self, *exc: object) -> None:
         await self.close()
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator[asyncpg.Connection]:
+        """Acquire a dedicated connection and run inside a transaction.
+
+        All statements issued on the yielded connection run in one
+        transaction: it commits when the block exits normally and rolls
+        back if an exception propagates::
+
+            async with db.transaction() as connection:
+                await connection.execute(...)
+        """
+        async with self.pool.acquire() as connection:
+            async with connection.transaction():
+                yield connection
+
+
+def tx(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+    """Decorator making a repo method's ``connection`` argument optional.
+
+    The decorated function must declare ``connection`` as its last
+    argument. When the caller passes a connection (by keyword), it is used
+    as-is — for example inside ``Database.transaction()``; when it is
+    absent, a connection is acquired from ``self.db.pool`` for the
+    duration of the call::
+
+        @tx
+        async def get_by_sku(
+            self, sku: str, connection: asyncpg.Connection
+        ) -> Item | None:
+            ...
+
+        await repo.get_by_sku(sku)                  # pool connection
+        async with db.transaction() as connection:
+            await repo.get_by_sku(sku, connection=connection)
+    """
+
+    @wraps(func)
+    async def wrapper(
+        self,
+        *args,
+        connection: asyncpg.Connection | None = None,
+        **kwargs,
+    ) -> Any:
+        if connection is None:
+            async with self.db.pool.acquire() as conn:
+                return await func(self, *args, conn, **kwargs)
+        return await func(self, *args, connection, **kwargs)
+
+    return wrapper

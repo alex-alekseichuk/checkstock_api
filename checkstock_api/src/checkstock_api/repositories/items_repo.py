@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from checkstock_api.common.db import Database
+import asyncpg
+
+from checkstock_api.common.db import Database, tx
 from checkstock_api.models.item import Item
 
 
@@ -43,3 +45,24 @@ class ItemRepo:
                 title,
             )
         return Item.from_row(row)
+
+    @tx
+    async def get_by_sku(
+        self, sku: str, connection: asyncpg.Connection
+    ) -> Item | None:
+        """Fetch an item by its SKU, or ``None`` if no such item exists.
+
+        ``connection`` is required: when the caller passes one (by keyword,
+        for example from ``Database.transaction()``) the lookup runs on it;
+        the :func:`~checkstock_api.common.db.tx` decorator acquires a
+        connection from the pool when the argument is absent.
+        """
+        row = await connection.fetchrow(
+            """
+            SELECT id, sku, title, created_at
+            FROM stock.items
+            WHERE sku = $1
+            """,
+            sku,
+        )
+        return Item.from_row(row) if row is not None else None

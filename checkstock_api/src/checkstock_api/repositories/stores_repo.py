@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from checkstock_api.common.db import Database
+import asyncpg
+
+from checkstock_api.common.db import Database, tx
 from checkstock_api.models.store import Store, StoreStatus
 
 
@@ -80,5 +82,22 @@ class StoreRepo:
             RETURNING id, title, status, created_at
             """,
             *args,
+        )
+        return Store.from_row(row) if row is not None else None
+
+    @tx
+    async def get(self, id: UUID, connection: asyncpg.Connection) -> Store | None:
+        """Fetch an active store by id on a given connection (inside a
+        transaction), or ``None`` if no such store exists or it is not
+        active.
+        """
+        row = await connection.fetchrow(
+            f"""
+            SELECT id, title, status, created_at
+            FROM stock.stores
+            WHERE id = $1
+              AND status = '{StoreStatus.ACTIVE.value}'
+            """,
+            id,
         )
         return Store.from_row(row) if row is not None else None

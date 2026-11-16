@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
+import asyncpg
 from asyncpg import Record
 
 from checkstock_api.common.db import Database
+from checkstock_api.models.stock import Stock
 from checkstock_api.models.store import StoreStatus
 from checkstock_api.models.transfer import TransferStatus, TransferType
 
@@ -35,7 +39,7 @@ class StockRepo:
                 st.quantity - st.reserved AS available
             FROM stock.stock st
             JOIN stock.items  i ON i.id = st.item_id
-            JOIN stock.stores s ON s.id = st.stock_id
+            JOIN stock.stores s ON s.id = st.store_id
             WHERE st.quantity > 0
               AND s.status = '{StoreStatus.ACTIVE.value}'
             ORDER BY i.sku ASC, s.title ASC
@@ -92,3 +96,90 @@ class StockRepo:
             ORDER BY i.sku ASC, t.updated_at ASC
             """,
         )
+
+    async def lock_stock(
+        self,
+        connection: asyncpg.Connection,
+        item_id: UUID,
+        store_id: UUID,
+    ) -> Stock | None:
+        """Fetch the ``(item_id, store_id)`` stock row with a row lock,
+        or ``None`` if the item has no stock row at that store.
+
+        The ``FOR UPDATE`` lock serializes concurrent modifications of the
+        row for the duration of the caller's transaction.
+        """
+        row = await connection.fetchrow(
+            """
+            SELECT item_id, store_id, quantity, reserved, created_at
+            FROM stock.stock
+            WHERE item_id = $1 AND store_id = $2
+            FOR UPDATE
+            """,
+            item_id,
+            store_id,
+        )
+        return Stock.from_row(row) if row is not None else None
+
+    async def create_lock_stock(
+        self,
+        connection: asyncpg.Connection,
+        item_id: UUID,
+        store_id: UUID,
+    ) -> Stock:
+        """Insert the ``(item_id, store_id)`` stock row, or return the
+        existing row if one is already present.
+
+        On a primary-key conflict (two concurrent receipts of the same
+        item at the same store) the existing row is returned with its
+        row lock held for the duration of the caller's transaction, so
+        the caller can safely adjust it.
+        """
+        row = await connection.fetchrow(
+            """
+            INSERT INTO stock.stock AS existing
+                (item_id, store_id)
+            VALUES ($1, $2)
+            ON CONFLICT (item_id, store_id) DO UPDATE
+                SET quantity = existing.quantity,
+                    reserved = existing.reserved
+            RETURNING item_id, store_id, quantity, reserved, created_at
+            """,
+            item_id,
+            store_id,
+        )
+        return Stock.from_row(row)
+
+    async def save_stock(
+        self,
+        connection: asyncpg.Connection,
+        stock: Stock,
+    ) -> None:
+        """Update the existing ``(item_id, store_id)`` stock row in place.
+
+        Only an existing row is updated (the row is never created); the
+        caller must have locked it with :meth:`lock_stock` first, and
+        ``stock`` carries the new values to store. The guarded update
+        keeps the table's CHECK constraints satisfiable. Raises
+        ``ValueError`` when no row is updated.
+        """
+        result = await connection.execute(
+            """
+            UPDATE stock.stock
+            SET quantity = $3,
+                reserved = $4
+            WHERE item_id = $1
+              AND store_id = $2
+              AND $3 >= 0
+              AND $4 >= 0
+              AND $3 >= $4
+            """,
+            stock.item_id,
+            stock.store_id,
+            stock.quantity,
+            stock.reserved,
+        )
+        if result == "UPDATE 0":
+            raise ValueError(
+                "no updatable stock row for the item at the store"
+            )

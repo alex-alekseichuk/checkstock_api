@@ -3,9 +3,11 @@
 from checkstock_api.routes.items_routes import create_items_router
 from checkstock_api.routes.stock_routes import create_stock_router
 from checkstock_api.routes.stores_routes import create_stores_router
+from checkstock_api.routes.transfer_routes import create_transfers_router
 
 __all__ = [
     "create_items_router",
     "create_stock_router",
     "create_stores_router",
+    "create_transfers_router",
 ]

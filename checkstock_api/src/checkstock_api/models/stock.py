@@ -11,16 +11,16 @@ if TYPE_CHECKING:
     from asyncpg import Record
 
 
-@dataclass(frozen=True)
+@dataclass
 class Stock:
     """On-hand stock of an item at one FF store.
 
-    Composite primary key ``(item_id, stock_id)``; ``reserved`` is the part of
+    Composite primary key ``(item_id, store_id)``; ``reserved`` is the part of
     ``quantity`` blocked for orders (``quantity >= reserved``).
     """
 
     item_id: UUID
-    stock_id: UUID
+    store_id: UUID
     quantity: int
     reserved: int
     created_at: datetime
@@ -30,7 +30,7 @@ class Stock:
         """Build a ``Stock`` from a single row of ``SELECT ... FROM stock.stock``."""
         return cls(
             item_id=row["item_id"],
-            stock_id=row["stock_id"],
+            store_id=row["store_id"],
             quantity=row["quantity"],
             reserved=row["reserved"],
             created_at=row["created_at"],

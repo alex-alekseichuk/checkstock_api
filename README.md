@@ -1,7 +1,10 @@
 ## TODO:
 - on store close, transfer its stocks to another store
-- auth
+- config
+- logger
+- auth.
 - swagger
+- separate repositories at line of CQRS
 
 ## Glossary
 
