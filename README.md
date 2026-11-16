@@ -1,5 +1,7 @@
 ## TODO:
 - on store close, transfer its stocks to another store
+- auth
+- swagger
 
 ## Glossary
 

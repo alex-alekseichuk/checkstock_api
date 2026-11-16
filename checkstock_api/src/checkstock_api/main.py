@@ -16,9 +16,12 @@ from fastapi import FastAPI
 from checkstock_api.common.db import Database
 from checkstock_api.repositories.items_repo import ItemRepo
 from checkstock_api.repositories.stores_repo import StoreRepo
+from checkstock_api.repositories.stock_repo import StockRepo
 from checkstock_api.routes.items_routes import create_items_router
+from checkstock_api.routes.stock_routes import create_stock_router
 from checkstock_api.routes.stores_routes import create_stores_router
 from checkstock_api.services.items_service import ItemsService
+from checkstock_api.services.stock_service import StockService
 from checkstock_api.services.stores_service import StoresService
 
 DEFAULT_DATABASE_URL = "postgresql://checkstock:checkstock@localhost:5432/checkstock"
@@ -50,6 +53,7 @@ app = FastAPI(title="checkstock API", lifespan=lifespan)
 app.state.db = Database(database_url())
 app.include_router(create_items_router(ItemsService(ItemRepo(app.state.db))))
 app.include_router(create_stores_router(StoresService(StoreRepo(app.state.db))))
+app.include_router(create_stock_router(StockService(StockRepo(app.state.db))))
 
 
 @app.get("/ping")
