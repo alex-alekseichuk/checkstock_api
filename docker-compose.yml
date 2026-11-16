@@ -16,15 +16,25 @@ services:
       timeout: 5s
       retries: 10
 
+  db-migrate:
+    build:
+      context: ./checkstock_db
+    container_name: checkstock_db_migrate
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    # One-shot container: exits after applying migrations; never restart.
+    restart: "no"
+
   api:
     build:
       context: ./checkstock_api
     container_name: checkstock_api
+    env_file: .env
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql+asyncpg://checkstock:checkstock@db:5432/checkstock
     ports:
       - "8000:8000"
 
