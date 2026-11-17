@@ -25,4 +25,4 @@ class ItemsService:
         If ``id`` is given it becomes the primary key; otherwise the
         database default (``uuidv7``) generates it.
         """
-        return await self.items_repo.insert(sku, title, id)
+        return await self.items_repo.insert_item(sku, title, id)

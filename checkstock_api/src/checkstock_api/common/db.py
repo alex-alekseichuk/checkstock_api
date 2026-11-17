@@ -93,14 +93,17 @@ def tx(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
     duration of the call::
 
         @tx
-        async def get_by_sku(
+        async def get_item_by_sku(
             self, sku: str, connection: asyncpg.Connection
         ) -> Item | None:
             ...
 
-        await repo.get_by_sku(sku)                  # pool connection
+        # 1. w/o transaction
+        await repo.get_item_by_sku(sku)
+
+        # 2. w/ transaction
         async with db.transaction() as connection:
-            await repo.get_by_sku(sku, connection=connection)
+            await repo.get_item_by_sku(sku, connection=connection)
     """
 
     @wraps(func)
@@ -112,7 +115,7 @@ def tx(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
     ) -> Any:
         if connection is None:
             async with self.db.pool.acquire() as conn:
-                return await func(self, *args, conn, **kwargs)
-        return await func(self, *args, connection, **kwargs)
+                return await func(self, *args, **{**kwargs, "connection": conn})
+        return await func(self, *args, **{**kwargs, "connection": connection})
 
     return wrapper

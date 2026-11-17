@@ -48,4 +48,32 @@ def create_transfers_router(transfers_service: TransferService) -> APIRouter:
         except TransferError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
+    @router.post("/{transfer_id}/receive", response_model=Transfer)
+    async def receive_transfer(transfer_id: UUID) -> Transfer:
+        """Receive an in-transit transfer: the goods arrive at the
+        destination store and the transfer reaches ``received`` state."""
+        try:
+            return await transfers_service.receive_transfer(transfer_id)
+        except TransferError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+
+    @router.post("/{transfer_id}/cancel", response_model=Transfer)
+    async def cancel_transfer(transfer_id: UUID) -> Transfer:
+        """Cancel a reserved FBS shipment: the reservation of the source
+        store's stock is released and the transfer reaches ``canceled``
+        state."""
+        try:
+            return await transfers_service.cancel_transfer(transfer_id)
+        except TransferError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+
+    @router.post("/{transfer_id}/approve", response_model=Transfer)
+    async def approve_transfer(transfer_id: UUID) -> Transfer:
+        """Approve a reserved FBS shipment: the reserved goods leave the
+        source store and the transfer goes into transit."""
+        try:
+            return await transfers_service.approve_transfer(transfer_id)
+        except TransferError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+
     return router

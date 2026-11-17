@@ -36,7 +36,7 @@ class TransferEvent(str, Enum):
     """Value of the ``stock.transfer_event`` enum (see ``TransferLog``)."""
 
     INBOUND = "inbound"
-    SENT = "sent"
+    SHIPPED = "shipped"
     RECEIVED = "received"
     RESERVED = "reserved"
     CANCELED = "canceled"
@@ -52,14 +52,14 @@ initial_status = {
 
 initial_event = {
     TransferType.INBOUND: TransferEvent.RECEIVED,
-    TransferType.TRANSFER: TransferEvent.SENT,
-    TransferType.SHIP_FBO: TransferEvent.SENT,
+    TransferType.TRANSFER: TransferEvent.SHIPPED,
+    TransferType.SHIP_FBO: TransferEvent.SHIPPED,
     TransferType.SHIP_FBS: TransferEvent.RESERVED,
 }
 
 
 class TransferError(Exception):
-    """Domain error while creating a transfer.
+    """Domain error while processing a transfer.
 
     Carries the HTTP ``status_code`` the route should answer with and the
     human-readable ``detail``.
@@ -71,11 +71,11 @@ class TransferError(Exception):
         self.detail = detail
 
 
-@dataclass(frozen=True)
+@dataclass
 class Transfer:
     """A stock movement: inbound receipt, inter-FF transfer, or FBO / FBS shipment.
 
-    ``src_stock_id`` / ``dest_stock_id`` are the source and destination FF
+    ``src_store_id`` / ``dest_store_id`` are the source and destination FF
     stores; either is ``None`` when the movement has no FF store on that side.
     """
 
@@ -83,8 +83,10 @@ class Transfer:
     item_id: UUID
     quantity: int
     type: TransferType
-    src_stock_id: UUID | None
-    dest_stock_id: UUID | None
+    src_store_id: UUID | None
+    dest_store_id: UUID | None
+    src_stock: Stock | None
+    dest_stock: Stock | None
     status: TransferStatus
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
@@ -97,8 +99,10 @@ class Transfer:
             item_id=row["item_id"],
             quantity=row["quantity"],
             type=TransferType(row["type"]),
-            src_stock_id=row["src_stock_id"],
-            dest_stock_id=row["dest_stock_id"],
+            src_store_id=row["src_store_id"],
+            dest_store_id=row["dest_store_id"],
+            src_stock=None,
+            dest_stock=None,
             status=TransferStatus(row["status"]),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
@@ -124,6 +128,8 @@ class Transfer:
             src_stock.quantity -= quantity
         if type == TransferType.SHIP_FBS:
             src_stock.reserved += quantity
+        if type == TransferType.INBOUND:
+            dest_stock.quantity += quantity
 
         return (
             initial_event.get(type, None),
@@ -132,8 +138,53 @@ class Transfer:
                 item_id=item_id,
                 quantity=quantity,
                 type=type,
-                src_stock_id=src_stock.store_id if src_stock else None,
-                dest_stock_id=dest_stock.store_id if dest_stock else None,
+                src_store_id=src_stock.store_id if src_stock else None,
+                dest_store_id=dest_stock.store_id if dest_stock else None,
+                src_stock=src_stock,
+                dest_stock=dest_stock,
                 status=status
             )
         )
+
+    def receive(self):
+        if not (self.type == TransferType.TRANSFER or self.type == TransferType.SHIP_FBO or self.type == TransferType.SHIP_FBS):
+            return None
+
+        if self.status != TransferStatus.IN_TRANSIT:
+            return None
+
+        if self.type == TransferType.TRANSFER:
+            if self.dest_stock is None:
+                return None
+            self.dest_stock.quantity += self.quantity
+
+        self.status = TransferStatus.RECEIVED
+
+        return TransferEvent.RECEIVED
+
+    def cancel(self):
+        if not (self.type == TransferType.SHIP_FBS and self.status == TransferStatus.RESERVED):
+            return None
+        if self.src_stock is None:
+            return None
+        if self.src_stock.reserved < self.quantity:
+            return None
+
+        self.src_stock.reserved -= self.quantity
+        self.status = TransferStatus.CANCELED
+
+        return TransferEvent.CANCELED
+
+    def approve(self):
+        if not (self.type == TransferType.SHIP_FBS and self.status == TransferStatus.RESERVED):
+            return None
+        if self.src_stock is None:
+            return None
+        if self.src_stock.reserved < self.quantity or self.src_stock.quantity < self.quantity:
+            return None
+
+        self.src_stock.reserved -= self.quantity
+        self.src_stock.quantity -= self.quantity
+        self.status = TransferStatus.IN_TRANSIT
+
+        return TransferEvent.SHIPPED

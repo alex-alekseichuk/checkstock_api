@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
-from checkstock_api.models.store import Store, StoreStatus
+from checkstock_api.models.store import Store, StoreError, StoreStatus
 from checkstock_api.services.stores_service import StoresService
 
 
@@ -32,14 +32,11 @@ def create_stores_router(stores_service: StoresService) -> APIRouter:
         """Close a store (set its status to ``closed``).
 
         Returns the updated store; 404 when no store with ``store_id``
-        exists.
+        exists, 409 when the store is not empty.
         """
-        store = await stores_service.close_store(store_id)
-        if store is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="store not found",
-            )
-        return store
+        try:
+            return await stores_service.close_store(store_id)
+        except StoreError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
     return router

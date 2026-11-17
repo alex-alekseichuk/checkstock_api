@@ -5,6 +5,7 @@
 - auth.
 - swagger
 - separate repositories at line of CQRS
+- move asyncpg to db module only, by clean arch.
 
 ## Glossary
 

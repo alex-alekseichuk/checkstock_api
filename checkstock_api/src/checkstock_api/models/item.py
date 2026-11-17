@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from asyncpg import Record
 
 
-@dataclass(frozen=True)
+@dataclass
 class Item:
     """A product (артикул) stocked at one or more FF stores."""
 

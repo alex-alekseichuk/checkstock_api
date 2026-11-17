@@ -16,7 +16,7 @@ class StoreRepo:
     def __init__(self, db: Database) -> None:
         self.db = db
 
-    async def insert(
+    async def insert_store(
         self,
         title: str,
         status: StoreStatus = StoreStatus.ACTIVE,
@@ -51,11 +51,35 @@ class StoreRepo:
             )
         return Store.from_row(row)
 
-    async def update(
+    async def lock_store(
+        self,
+        connection: asyncpg.Connection,
+        id: UUID,
+    ) -> Store | None:
+        """Fetch a store by id on the given connection (inside an open
+        transaction), or ``None`` if no such store exists.
+
+        The ``FOR UPDATE`` row lock serializes concurrent status changes
+        of the store for the duration of the caller's transaction.
+        """
+        row = await connection.fetchrow(
+            """
+            SELECT id, title, status, created_at
+            FROM stock.stores
+            WHERE id = $1
+            FOR UPDATE
+            """,
+            id,
+        )
+        return Store.from_row(row) if row is not None else None
+
+    @tx
+    async def update_store(
         self,
         id: UUID,
         title: str | None = None,
         status: StoreStatus | None = None,
+        connection: asyncpg.Connection | None = None,
     ) -> Store | None:
         """Update an existing store, changing only the fields that are given.
 
@@ -74,7 +98,7 @@ class StoreRepo:
         if not sets:
             raise ValueError("nothing to update: pass title and/or status")
         args.append(id)
-        row = await self.db.pool.fetchrow(
+        row = await connection.fetchrow(
             f"""
             UPDATE stock.stores
             SET {", ".join(sets)}
@@ -82,22 +106,5 @@ class StoreRepo:
             RETURNING id, title, status, created_at
             """,
             *args,
-        )
-        return Store.from_row(row) if row is not None else None
-
-    @tx
-    async def get(self, id: UUID, connection: asyncpg.Connection) -> Store | None:
-        """Fetch an active store by id on a given connection (inside a
-        transaction), or ``None`` if no such store exists or it is not
-        active.
-        """
-        row = await connection.fetchrow(
-            f"""
-            SELECT id, title, status, created_at
-            FROM stock.stores
-            WHERE id = $1
-              AND status = '{StoreStatus.ACTIVE.value}'
-            """,
-            id,
         )
         return Store.from_row(row) if row is not None else None

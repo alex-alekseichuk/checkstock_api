@@ -19,7 +19,20 @@ class StoreStatus(str, Enum):
     CLOSED = "closed"
 
 
-@dataclass(frozen=True)
+class StoreError(Exception):
+    """Domain error while processing a store.
+
+    Carries the HTTP ``status_code`` the route should answer with and the
+    human-readable ``detail``.
+    """
+
+    def __init__(self, status_code: int, detail: str) -> None:
+        super().__init__(detail)
+        self.status_code = status_code
+        self.detail = detail
+
+
+@dataclass
 class Store:
     """A fulfillment center (FF store) holding stock for items."""
 

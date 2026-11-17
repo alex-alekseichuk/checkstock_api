@@ -7,7 +7,7 @@ from uuid import UUID
 import asyncpg
 from asyncpg import Record
 
-from checkstock_api.common.db import Database
+from checkstock_api.common.db import Database, tx
 from checkstock_api.models.stock import Stock
 from checkstock_api.models.store import StoreStatus
 from checkstock_api.models.transfer import TransferStatus, TransferType
@@ -45,6 +45,25 @@ class StockRepo:
             ORDER BY i.sku ASC, s.title ASC
             """,
         )
+
+    @tx
+    async def is_store_empty(
+        self, store_id: UUID, connection: asyncpg.Connection
+    ) -> bool:
+        """Return ``True`` when the store holds no on-hand stock, i.e. no
+        ``stock.stock`` row for it has ``quantity > 0`` (``reserved`` can
+        only be non-zero where ``quantity`` is, by the table's CHECK
+        constraints).
+        """
+        row = await connection.fetchrow(
+            """
+            SELECT count(1) AS cnt
+            FROM stock.stock st
+            WHERE st.quantity > 0 AND st.store_id = $1
+            """,
+            store_id,
+        )
+        return row["cnt"] == 0
 
     # The only transfer types that can appear in transit (``inbound`` is
     # excluded from this report).
@@ -150,7 +169,7 @@ class StockRepo:
         )
         return Stock.from_row(row)
 
-    async def save_stock(
+    async def update_stock(
         self,
         connection: asyncpg.Connection,
         stock: Stock,

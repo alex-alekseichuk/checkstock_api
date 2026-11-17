@@ -55,7 +55,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="checkstock API", lifespan=lifespan)
 app.state.db = Database(database_url())
 app.include_router(create_items_router(ItemsService(ItemRepo(app.state.db))))
-app.include_router(create_stores_router(StoresService(StoreRepo(app.state.db))))
+app.include_router(
+    create_stores_router(StoresService(StoreRepo(app.state.db), StockRepo(app.state.db)))
+)
 app.include_router(create_stock_router(StockService(StockRepo(app.state.db))))
 app.include_router(
     create_transfers_router(

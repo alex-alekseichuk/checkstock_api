@@ -16,7 +16,7 @@ class ItemRepo:
     def __init__(self, db: Database) -> None:
         self.db = db
 
-    async def insert(self, sku: str, title: str, id: UUID | None = None) -> Item:
+    async def insert_item(self, sku: str, title: str, id: UUID | None = None) -> Item:
         """Insert a new item and return it.
 
         If ``id`` is given it is used as the primary key; otherwise the
@@ -47,7 +47,7 @@ class ItemRepo:
         return Item.from_row(row)
 
     @tx
-    async def get_by_sku(
+    async def get_item_by_sku(
         self, sku: str, connection: asyncpg.Connection
     ) -> Item | None:
         """Fetch an item by its SKU, or ``None`` if no such item exists.

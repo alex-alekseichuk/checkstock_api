@@ -27,7 +27,7 @@ CREATE TYPE stock.transfer_type AS ENUM ('inbound', 'transfer', 'ship_fbo', 'shi
 CREATE TYPE stock.transfer_status AS ENUM ('reserved', 'canceled', 'in_transit', 'received');
 
 -- Transfer lifecycle event recorded in transfer_logs.
-CREATE TYPE stock.transfer_event AS ENUM ('inbound', 'sent', 'received', 'reserved', 'canceled');
+CREATE TYPE stock.transfer_event AS ENUM ('inbound', 'shipped', 'received', 'reserved', 'canceled');
 
 -- Products (артикулы).
 CREATE TABLE stock.items (
@@ -64,7 +64,7 @@ CREATE TABLE stock.stock (
 -- `src_stock_id` / `dest_stock_id` are the source and destination FF
 -- stores (NULL when the movement has no FF store on that side).
 CREATE TABLE stock.transfers (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT uuidv7(),
     item_id uuid NOT NULL REFERENCES stock.items (id),
     quantity integer NOT NULL,
     type stock.transfer_type NOT NULL DEFAULT 'inbound',
