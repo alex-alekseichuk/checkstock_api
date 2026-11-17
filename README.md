@@ -1,3 +1,21 @@
+# Check Stock API
+
+## Features
+
+- Layers:
+  - Domain: models
+  - Service: services
+  - Infra: common, routes, and repositories
+- Separated independent domain and business logic in the `models/`.
+- The models are finite state machines with the rules bounded.
+- Cover it within unit tests.
+- Based on docker-compose dev/test environment.
+- Separate DB layer as infrastructure.
+- ER diagram → DB Migrations.
+- Swagger.
+- E2E tests.
+
+
 ## Prerequisites
 
 - **Docker** with the **Docker Compose** plugin — runs the whole stack: Postgres 18, one-shot dbmate migrations, and the API.
