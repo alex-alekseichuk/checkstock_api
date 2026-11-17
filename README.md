@@ -111,12 +111,15 @@ CHECKSTOCK_E2E_DATABASE_URL="postgresql://checkstock:checkstock@localhost:5432/c
 ```
 
 ## TODO:
-- on store close, transfer its stocks to another store
+- feature: on store close, transfer its stocks to another store
 - config
 - logger
 - auth.
-- separate repositories at line of CQRS
-- move asyncpg to db module only, by clean arch.
+- refactoring: separate repositories at line of CQRS
+- refactoring: move asyncpg to db module only, by clean arch.
+- optimization: indexes to cover the queries
+- optimization: @changable decorator and is_changed flag for the models to avoid saving un-touched ones
+- refactoring: @transfer_action decorator for methods in transfer_service
 
 ## Glossary
 
