@@ -18,6 +18,7 @@ from checkstock_api.repositories.items_repo import ItemRepo
 from checkstock_api.repositories.stores_repo import StoreRepo
 from checkstock_api.repositories.stock_repo import StockRepo
 from checkstock_api.repositories.transfer_repo import TransferRepo
+from checkstock_api.routes.docs_routes import create_docs_router
 from checkstock_api.routes.items_routes import create_items_router
 from checkstock_api.routes.stock_routes import create_stock_router
 from checkstock_api.routes.stores_routes import create_stores_router
@@ -52,7 +53,14 @@ async def lifespan(app: FastAPI):
         await app.state.db.close()
 
 
-app = FastAPI(title="checkstock API", lifespan=lifespan)
+app = FastAPI(
+    title="checkstock API",
+    lifespan=lifespan,
+    # The Swagger UI is served by the custom router below; disable the
+    # built-in /docs and /redoc pages it replaces.
+    docs_url=None,
+    redoc_url=None,
+)
 app.state.db = Database(database_url())
 app.include_router(create_items_router(ItemsService(ItemRepo(app.state.db))))
 app.include_router(
@@ -70,6 +78,7 @@ app.include_router(
         )
     )
 )
+app.include_router(create_docs_router("checkstock API"))
 
 
 @app.get("/ping")

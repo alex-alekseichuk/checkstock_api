@@ -21,6 +21,8 @@ That starts:
 
 Check it is up: `curl http://localhost:8000/ping` → `{"status":"ok","message":"pong"}`.
 
+The interactive Swagger UI is at `http://localhost:8000/docs` (the landing page `http://localhost:8000` redirects there); the raw OpenAPI schema is at `http://localhost:8000/openapi.json`.
+
 Stop everything with:
 
 ```bash
@@ -95,7 +97,6 @@ CHECKSTOCK_E2E_DATABASE_URL="postgresql://checkstock:checkstock@localhost:5432/c
 - config
 - logger
 - auth.
-- swagger
 - separate repositories at line of CQRS
 - move asyncpg to db module only, by clean arch.
 
