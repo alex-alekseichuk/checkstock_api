@@ -1,3 +1,76 @@
+## Prerequisites
+
+- **Docker** with the **Docker Compose** plugin — runs the whole stack: Postgres 18, one-shot dbmate migrations, and the API.
+- **Python ≥ 3.12** — only if you develop / test the API locally instead of via Docker.
+- **dbmate** — only if you want to apply the DB migrations outside the compose one-shot container.
+- **`.env`** file at the project root with `DATABASE_URL` (already committed; used by the `api` and `db-migrate` compose services).
+
+## Install
+
+### Full stack with Docker Compose (recommended)
+
+```bash
+docker compose up --build
+```
+
+That starts:
+
+- `db` — Postgres 18 (`checkstock` / `checkstock`), port `5432`;
+- `db-migrate` — one-shot container that applies all dbmate migrations, then exits;
+- `api` — the FastAPI service on port `8000`.
+
+Check it is up: `curl http://localhost:8000/ping` → `{"status":"ok","message":"pong"}`.
+
+Stop everything with:
+
+```bash
+docker compose down
+```
+
+### Local development (API and tests, no containerized app)
+
+```bash
+# 1. Start only the database
+docker compose up db -d
+
+# 2. Apply the migrations
+cd checkstock_db
+export DATABASE_URL="postgresql://checkstock:checkstock@localhost:5432/checkstock?sslmode=disable"
+dbmate up
+cd ..
+
+# 3. Set up the API environment
+cd checkstock_api
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 4. Run the service
+PYTHONPATH=src uvicorn checkstock_api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+The app reads the DSN from the `DATABASE_URL` environment variable; without it, it falls back to the compose credentials on `localhost:5432`.
+
+## Tests
+
+### Test business logic 
+
+```bash
+cd ./checkstock_api
+
+# run only the models tests (this is what "by hand" means here)
+.venv/bin/python -m pytest tests/checkstock_api/models -v
+
+# one specific model
+.venv/bin/python -m pytest tests/checkstock_api/models/test_transfer.py -v
+
+# one specific test by name
+.venv/bin/python -m pytest tests/checkstock_api/models/test_transfer.py -k receive -v
+
+# run quietly, no per-test output
+.venv/bin/python -m pytest tests/checkstock_api/models
+```
+
 ## TODO:
 - on store close, transfer its stocks to another store
 - config
