@@ -1,13 +1,9 @@
-"""Tests for the checkstock API routes."""
+"""E2E test for the service health endpoint."""
 
 from fastapi.testclient import TestClient
 
-from checkstock_api.main import app
 
-client = TestClient(app)
-
-
-def test_ping_returns_ok() -> None:
+def test_ping_returns_ok(client: TestClient) -> None:
     """GET /ping responds 200 with the expected payload."""
     response = client.get("/ping")
     assert response.status_code == 200

@@ -71,6 +71,25 @@ cd ./checkstock_api
 .venv/bin/python -m pytest tests/checkstock_api/models
 ```
 
+### E2E tests
+
+The E2E suite (`tests/e2e/`) exercises the full app — routes, services and repositories — against a real Postgres database. It creates a dedicated test database (`checkstock_e2e` by default), applies the dbmate migrations, truncates all tables before each test, and drops the database after the session ends. It needs the `db` compose service:
+
+```bash
+# 1. Start the database only (from the repo root)
+docker compose up db -d
+
+# 2. Run the E2E suite
+cd ./checkstock_api
+.venv/bin/python -m pytest tests/e2e
+```
+
+If the database is not reachable, the whole suite is skipped with an explanatory message instead of failing. Point the suite at a different database with `CHECKSTOCK_E2E_DATABASE_URL`:
+
+```bash
+CHECKSTOCK_E2E_DATABASE_URL="postgresql://checkstock:checkstock@localhost:5432/checkstock_e2e" .venv/bin/python -m pytest tests/e2e
+```
+
 ## TODO:
 - on store close, transfer its stocks to another store
 - config
